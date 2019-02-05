@@ -2,7 +2,7 @@
 
 Efficiently generate cryptographically strong random passwords using alpha, numeric and special symbols.
 
-[![Build Status](https://travis-ci.org/RandomPassword/Elixir.svg?branch=master)](https://travis-ci.org/RandomPassword/Elixir) &nbsp; [![Hex Version](https://img.shields.io/hexpm/v/RandomPassword.svg "Hex Version")](https://hex.pm/packages/random_password) &nbsp; [![License: MIT](https://img.shields.io/npm/l/express.svg)]()
+[![Build Status](https://travis-ci.org/RandomPassword/Elixir.svg?branch=master)](https://travis-ci.org/RandomPassword/Elixir) &nbsp; [![Hex Version](https://img.shields.io/hexpm/v/random_password.svg "Hex Version")](https://hex.pm/packages/random_password) &nbsp; [![License: MIT](https://img.shields.io/npm/l/express.svg)]()
 
 ## <a name="Installation"></a>Installation
 
