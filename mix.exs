@@ -4,7 +4,7 @@ defmodule RandomPassword.MixProject do
   def project do
     [
       app: :random_password,
-      version: "1.0.1",
+      version: "1.0.2",
       elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -12,8 +12,6 @@ defmodule RandomPassword.MixProject do
       package: package()
     ]
   end
-
-  def application, do: []
 
   defp deps, do:
     [
@@ -32,7 +30,11 @@ defmodule RandomPassword.MixProject do
     [
       maintainers: ["Paul Rogers"],
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/RandomPassword/Elixir"}
+      links: %{
+        "GitHub" => "https://github.com/RandomPassword/Elixir",
+        "README" => "https://randompassword.github.io/Elixir/",
+        "Docs" => "https://hexdocs.pm/random_password/api-reference.html"
+      }
     ]
   end  
 end
