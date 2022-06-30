@@ -4,7 +4,7 @@ defmodule RandomPassword.MixProject do
   def project do
     [
       app: :random_password,
-      version: "1.0.2",
+      version: "1.1.0",
       elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -13,16 +13,17 @@ defmodule RandomPassword.MixProject do
     ]
   end
 
-  defp deps, do:
-    [
-      {:puid, "~> 1.0"},
+  defp deps,
+    do: [
+      {:puid, "~> 2.0"},
+      {:dialyxir, "~> 1.0", only: :dev, runtime: false},
       {:earmark, "~> 1.2", only: :dev},
       {:ex_doc, "~> 0.19", only: :dev}
     ]
 
   defp description do
     """
-    Efficiently generate cryptographically strong random passwords using alpha, numeric and special symbols.
+    Efficiently generate cryptographically strong random passwords using alpha (including Unicode), numeric and special symbols.
     """
   end
 
@@ -36,5 +37,5 @@ defmodule RandomPassword.MixProject do
         "Docs" => "https://hexdocs.pm/random_password/api-reference.html"
       }
     ]
-  end  
+  end
 end

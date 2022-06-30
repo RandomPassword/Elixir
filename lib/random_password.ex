@@ -1,114 +1,24 @@
-defmodule RandomPassword.Error do
-  @moduledoc """
-  Errors raised when defining a RandomPassword module with invalid options
-  """
-  defexception message: "RandomPassword error"
-end
-
-defmodule RandomPassword.Defaults do
-  @moduledoc """
-  Defaults used when defining a RandomPassword module
-
-    - alpha: 14
-    - decimal: 2
-    - symbol: 1
-    - symbols: "!#$%&()*+,-./:;<=>?@[]^_{|}~"
-
-  """
-  defstruct alpha: 14,
-            decimal: 2,
-            symbol: 1,
-            symbols: "!#$%&()*+,-./:;<=>?@[]^_{|}~"
-end
-
-defmodule RandomPassword.Info do
-  @moduledoc false
-  defstruct entropy_bits: 0,
-            alpha: 0,
-            decimal: 0,
-            symbol: 0,
-            symbols: "",
-            length: 0
-end
-
-defmodule RandomPassword.Util do
-  @moduledoc false
-
-  @doc false
-  def bits(n, charset), do: n * Puid.Entropy.bits_per_char!(charset)
-
-  @doc false
-  def puid_mod_name(mod, charset),
-    do:
-      "#{mod}.Puid.#{charset |> to_string() |> String.capitalize()}"
-      |> String.to_atom()
-
-  @doc false
-  def gen_puid_charset_mod(mod, charset, 0, _) do
-    mod_name =
-      mod
-      |> puid_mod_name(charset)
-
-    defmodule mod_name do
-      def generate, do: ""
-      def info, do: "Empty string module"
-    end
-  end
-
-  @doc false
-  def gen_puid_charset_mod(mod, charset, n, nil),
-    do:
-      mod
-      |> puid_mod_name(charset)
-      |> defmodule(do: use(Puid, bits: RandomPassword.Util.bits(n, charset), charset: charset))
-
-  @doc false
-  def gen_puid_charset_mod(mod, charset, n, rand_bytes),
-    do:
-      mod
-      |> puid_mod_name(charset)
-      |> defmodule(
-        do:
-          use(Puid,
-            bits: RandomPassword.Util.bits(n, charset),
-            charset: charset,
-            rand_bytes: rand_bytes
-          )
-      )
-
-  @doc false
-  def gen_puid_chars_mod(mod, _, 0, _) do
-    mod_name =
-      mod
-      |> puid_mod_name(:symbol)
-
-    defmodule mod_name do
-      def generate, do: ""
-      def info, do: "Empty string module"
-    end
-  end
-
-  @doc false
-  def gen_puid_chars_mod(mod, chars, n, nil),
-    do:
-      mod
-      |> puid_mod_name(:symbol)
-      |> defmodule(do: use(Puid, bits: RandomPassword.Util.bits(n, chars), chars: chars))
-
-  @doc false
-  def gen_puid_chars_mod(mod, chars, n, rand_bytes),
-    do:
-      mod
-      |> puid_mod_name(:symbol)
-      |> defmodule(
-        do:
-          use(Puid,
-            bits: RandomPassword.Util.bits(n, chars),
-            chars: chars,
-            rand_bytes: rand_bytes
-          )
-      )
-end
+# MIT License
+#
+# Copyright (c) 2019-2022 Knoxen
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 defmodule RandomPassword do
   @moduledoc """
@@ -119,153 +29,114 @@ defmodule RandomPassword do
 
   """
 
-  alias RandomPassword.Defaults
   alias RandomPassword.Util
 
-  alias Puid.Entropy
+  alias Puid.Chars
 
   @doc """
 
   Bits of entropy for password with `alpha` alpha chars, `decimal` decimal digits and `symbol`
-  chars using `symbols`, which defaults to "!#$%&()*+,-./:;<=>?@[]^_{|}~"
+  symbol chars.
 
   This function provides calculation of entropy bits without having to create a module.
+
+  The characters to be used for `alphas` and `symbols` can be specified as options; o/w defaults
+  are used.
 
   ## Example
 
       iex> RandomPassword.entropy_bits(12, 4, 2) |> Float.round(2)
       91.31
 
-      iex> RandomPassword.entropy_bits(12, 4, 2, "!@#$%&")  |> Float.round(2)
+      iex> RandomPassword.entropy_bits(12, 4, 2, symbols: "!@#$%&") |> Float.round(2)
       86.86
 
   """
-  def entropy_bits(
-        alpha,
-        decimal,
-        symbol,
-        symbols \\ %RandomPassword.Defaults{}.symbols()
-      ) do
-    cond do
-      alpha < 0 ->
-        raise RandomPassword.Error, "negative number of alpha chars"
 
-      decimal < 0 ->
-        raise RandomPassword.Error, "negative number of digit chars"
+  @spec entropy_bits(non_neg_integer, non_neg_integer, non_neg_integer, map()) :: float()
+  def entropy_bits(alpha, decimal, symbol, options \\ %{}) do
+    alphas = options[:alphas] || Util.chars_string(:alpha)
+    symbols = options[:symbols] || Util.chars_string(:symbol)
 
-      symbol < 0 ->
-        raise RandomPassword.Error, "negative number of symbol chars"
+    {alpha_bits, decimal_bits, symbol_bits} =
+      entropy_bits(alpha, decimal, symbol, alphas, symbols)
 
-      true ->
-        alpha * Entropy.bits_per_char!(:alpha) +
-          decimal * Entropy.bits_per_char!(:decimal) +
-          symbol * Entropy.bits_per_char!(symbols)
-    end
+    alpha_bits + decimal_bits + symbol_bits
+  end
+
+  @doc false
+  def entropy_bits(alpha, decimal, symbol, alphas, symbols) do
+    Util.validate_alpha(alphas)
+    Util.validate_symbol(symbols)
+
+    decimals = Util.chars_string(:decimal)
+
+    Util.validate_n_chars(alpha, alphas)
+    Util.validate_n_chars(decimal, decimals)
+    Util.validate_n_chars(symbol, symbols)
+
+    alpha_bits = Util.bits(alpha, alphas)
+    decimal_bits = Util.bits(decimal, decimals)
+    symbol_bits = Util.bits(symbol, symbols)
+
+    {alpha_bits, decimal_bits, symbol_bits}
   end
 
   defmacro __using__(opts) do
     quote do
-      defaults = %Defaults{}
-
-      opt_alpha = unquote(opts)[:alpha]
-      opt_decimal = unquote(opts)[:decimal]
-      opt_symbol = unquote(opts)[:symbol]
+      default_alpha = Chars.charlist!(:alpha)
+      default_symbol = Chars.charlist!(:symbol)
 
       {alpha, decimal, symbol} =
-        if is_nil(opt_alpha) and is_nil(opt_decimal) and is_nil(opt_symbol),
-          do: {
-            defaults.alpha(),
-            defaults.decimal(),
-            defaults.symbol
-          },
-          else: {opt_alpha || 0, opt_decimal || 0, opt_symbol || 0}
-
-      opt_symbols = unquote(opts)[:symbols]
-
-      if !is_nil(opt_symbols) do
-        alphas = Puid.CharSet.chars(:alpha)
-        decimals = Puid.CharSet.chars(:decimal)
-
-        if !is_binary(opt_symbols), do: raise(RandomPassword.Error, "symbols not a binary")
-
-        opt_symbols
-        |> String.graphemes()
-        |> Enum.reduce(
-          false,
-          &(&2 || String.contains?(alphas, &1) || String.contains?(decimals, &1))
+        Util.default_n(
+          unquote(opts)[:alpha],
+          unquote(opts)[:decimal],
+          unquote(opts)[:symbol]
         )
-        |> if do
-          raise RandomPassword.Error, "symbols can't contain alpha or decimal"
-        end
-      end
 
-      symbols = opt_symbols || defaults.symbols()
+      alphas = unquote(opts)[:alphas] || default_alpha |> to_string()
+      decimals = Chars.charlist!(:decimal) |> to_string()
+      symbols = unquote(opts)[:symbols] || default_symbol |> to_string()
+
+      Util.validate_alpha(alphas)
+      Util.validate_symbol(symbols)
+
+      Util.validate_n_chars(alpha, alphas)
+      Util.validate_n_chars(decimal, decimals)
+      Util.validate_n_chars(symbol, symbols)
 
       rand_bytes = unquote(opts[:rand_bytes])
 
-      cond do
-        !is_integer(alpha) ->
-          raise RandomPassword.Error, "alpha not an integer"
+      {alpha_bits, decimal_bits, symbol_bits} =
+        RandomPassword.entropy_bits(
+          alpha,
+          decimal,
+          symbol,
+          alphas,
+          symbols
+        )
 
-        !is_integer(decimal) ->
-          raise RandomPassword.Error, "decimal not an integer"
-
-        !is_integer(symbol) ->
-          raise RandomPassword.Error, "symbol not an integer"
-
-        alpha < 0 ->
-          raise RandomPassword.Error, "negative number of alpha chars"
-
-        decimal < 0 ->
-          raise RandomPassword.Error, "negative number of digit chars"
-
-        symbol < 0 ->
-          raise RandomPassword.Error, "negative number of symbol chars"
-
-        byte_size(symbols) < 2 ->
-          raise RandomPassword.Error, "need at least 2 symbols"
-
-        true ->
-          :ok
+      defmodule __MODULE__.Empty do
+        def generate, do: ""
+        def info, do: "Empty string module"
       end
 
-      @random_password_alpha alpha
-      @random_password_decimal decimal
-      @random_password_symbol symbol
-      @random_password_size alpha + decimal + symbol
-      @random_password_symbols symbols
-      @random_password_entropy_bits RandomPassword.entropy_bits(
-                                      alpha,
-                                      decimal,
-                                      symbol,
-                                      symbols
-                                    )
-                                    |> Float.round(2)
+      def_mod = fn mod_name, bits, chars, rand_bytes ->
+        if 0 < bits do
+          defmodule mod_name, do: use(Puid, bits: bits, chars: chars, rand_bytes: rand_bytes)
+        else
+          defmodule mod_name do
+            def generate, do: ""
+            def info, do: %Puid.Info{characters: ""}
+          end
+        end
+      end
 
-      @random_password_bytes rand_bytes
+      def_mod.(__MODULE__.Alpha, alpha_bits, alphas, rand_bytes)
 
-      Util.gen_puid_charset_mod(
-        __MODULE__,
-        :alpha,
-        @random_password_alpha,
-        @random_password_bytes
-      )
+      def_mod.(__MODULE__.Decimal, decimal_bits, decimals, rand_bytes)
 
-      Util.gen_puid_charset_mod(
-        __MODULE__,
-        :decimal,
-        @random_password_decimal,
-        @random_password_bytes
-      )
-
-      Util.gen_puid_chars_mod(
-        __MODULE__,
-        @random_password_symbols,
-        @random_password_symbol,
-        @random_password_bytes
-      )
-
-      defp generate(charset), do: (__MODULE__ |> Util.puid_mod_name(charset)).generate()
+      def_mod.(__MODULE__.Symbol, symbol_bits, symbols, rand_bytes)
 
       @doc """
       Generate random password
@@ -278,14 +149,28 @@ defmodule RandomPassword do
       """
 
       def generate do
-        shuffle =
-          &if @random_password_bytes,
-            do: CryptoRand.shuffle(&1, @random_password_bytes),
-            else: CryptoRand.shuffle(&1)
+        alpha = __MODULE__.Alpha.generate()
+        decimal = __MODULE__.Decimal.generate()
+        symbol = __MODULE__.Symbol.generate()
 
-        (generate(:symbol) <> generate(:decimal) <> generate(:alpha))
-        |> shuffle.()
+        (alpha <> decimal <> symbol)
+        |> to_charlist()
+        |> Enum.shuffle()
+        |> to_string()
       end
+
+      mod_info = %RandomPassword.Info{
+        entropy_bits: (alpha_bits + decimal_bits + symbol_bits) |> Float.round(2),
+        alpha: alpha,
+        decimal: decimal,
+        symbol: symbol,
+        alphas: __MODULE__.Alpha.info().characters(),
+        decimals: __MODULE__.Decimal.info().characters(),
+        symbols: __MODULE__.Symbol.info().characters(),
+        length: alpha + decimal + symbol
+      }
+
+      @random_password_mod_info mod_info
 
       @doc """
       `RandomPassword` generated module info.
@@ -302,16 +187,7 @@ defmodule RandomPassword do
                 symbols: "!#$%&()*+,-./:;<=>?@[]^_{|}~"
               }
       """
-      def info do
-        %RandomPassword.Info{
-          entropy_bits: @random_password_entropy_bits,
-          alpha: @random_password_alpha,
-          decimal: @random_password_decimal,
-          symbol: @random_password_symbol,
-          symbols: @random_password_symbols,
-          length: @random_password_alpha + @random_password_decimal + @random_password_symbol
-        }
-      end
+      def info, do: @random_password_mod_info
     end
   end
 end

@@ -1,88 +1,216 @@
+# MIT License
+#
+# Copyright (c) 2019-2022 Knoxen
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 defmodule RandomPassword.Test do
   use ExUnit.Case
+
+  alias RandomPassword.Util
+
+  def no_module_default_chars(a, d, s, expect),
+    do: assert(RandomPassword.entropy_bits(a, d, s) |> Float.round(2) === expect)
+
+  test "entropy bits without module, default chars" do
+    no_module_default_chars(16, 4, 2, 114.11)
+    no_module_default_chars(16, 2, 0, 97.85)
+    no_module_default_chars(16, 0, 2, 100.82)
+    no_module_default_chars(16, 0, 0, 91.21)
+
+    no_module_default_chars(0, 14, 2, 56.12)
+    no_module_default_chars(0, 14, 0, 46.51)
+    no_module_default_chars(0, 0, 14, 67.3)
+
+    assert RandomPassword.entropy_bits(0, 0, 0) === 0
+  end
+
+  def no_module_default_chars(alphas \\ nil, symbols \\ nil, expect) do
+    bits = RandomPassword.entropy_bits(12, 4, 2, alphas: alphas, symbols: symbols)
+    assert bits |> Float.round(2) === expect
+  end
+
+  test "entropy bits without module, custom chars" do
+    alphas = "dîngøsky"
+    symbols = "!@#$%^&*()_+"
+    no_module_default_chars(alphas, nil, 58.90)
+    no_module_default_chars(alphas, symbols, 56.46)
+    no_module_default_chars(nil, symbols, 88.86)
+  end
+
+  @tag :only
+  test "entropy bits without module, invalid" do
+    assert_raise RandomPassword.Error, fn ->
+      RandomPassword.entropy_bits(12, 4, 2, alphas: "")
+    end
+
+    assert_raise Puid.Error, fn ->
+      RandomPassword.entropy_bits(12, 4, 2, symbols: "#")
+    end
+
+    assert_raise RandomPassword.Error, fn ->
+      RandomPassword.entropy_bits(12, 4, 2, alphas: "dîng0sky")
+    end
+
+    assert_raise RandomPassword.Error, fn ->
+      RandomPassword.entropy_bits(12, 4, 2, symbols: "!@#$%^&*(ø)_+")
+    end
+
+    symbols = [?# | Puid.Chars.charlist!(:symbol)] |> to_string
+
+    assert_raise RandomPassword.Error, fn ->
+      RandomPassword.entropy_bits(12, 4, 2, symbols: symbols)
+    end
+  end
 
   def count_char_matchs(string, chars) do
     string
     |> String.graphemes()
     |> Enum.reduce(0, fn char, count ->
-      if String.contains?(chars, char), do: count + 1, else: count
+      if chars |> String.contains?(char), do: count + 1, else: count
     end)
   end
 
-  def password_test(alpha, decimal, symbol) do
+  def n_chars_test(alpha, decimal, symbol) do
     mod = "Password_#{alpha}_#{decimal}_#{symbol}" |> String.to_atom()
-    defmodule(mod, do: use(RandomPassword, alpha: alpha, decimal: decimal, symbol: symbol))
 
-    assert mod.info.alpha === alpha
-    assert mod.info.decimal === decimal
-    assert mod.info.symbol === symbol
-    assert mod.info.length === alpha + decimal + symbol
-    assert mod.info.entropy_bits > 0
+    defmodule(mod,
+      do: use(RandomPassword, alpha: alpha, decimal: decimal, symbol: symbol)
+    )
+
+    mod_info = mod.info()
+
+    assert mod_info.alpha === alpha
+    assert mod_info.decimal === decimal
+    assert mod_info.symbol === symbol
+    assert mod_info.length === alpha + decimal + symbol
+    assert mod_info.entropy_bits > 0
 
     password = mod.generate()
     assert is_binary(password)
-    assert password |> String.length() === mod.info.length
+    assert password |> String.length() === mod_info.length
 
-    alphas =
-      (?a..?z |> Enum.to_list() |> to_string()) <> (?A..?Z |> Enum.to_list() |> to_string())
+    alphas = Util.chars_string(:alpha)
+    decimals = Util.chars_string(:decimal)
+    symbols = Util.chars_string(:symbol)
 
     assert count_char_matchs(password, alphas) === alpha
-    assert count_char_matchs(password, "0123456789") === decimal
+    assert count_char_matchs(password, decimals) === decimal
+    assert count_char_matchs(password, symbols) === symbol
   end
 
-  test "password module explicit counts" do
-    password_test(10, 4, 2)
-    password_test(10, 4, 0)
-    password_test(10, 0, 2)
-    password_test(10, 0, 0)
-    password_test(0, 10, 2)
-    password_test(0, 10, 0)
-    password_test(0, 0, 10)
-  end
-
-  test "default module info" do
+  test "default module" do
     defmodule(DefaultPassword, do: use(RandomPassword))
-    assert DefaultPassword.info().alpha === 14
-    assert DefaultPassword.info().decimal === 2
-    assert DefaultPassword.info().symbol === 1
-    assert DefaultPassword.info().length === 17
-    assert DefaultPassword.info().entropy_bits === 91.26
+    info = DefaultPassword.info()
+    assert info.alpha === 14
+    assert info.decimal === 2
+    assert info.symbol === 1
+    assert info.length === 17
+    assert info.entropy_bits === 91.26
+    assert DefaultPassword.generate() |> String.length() === info.length
   end
 
-  test "password module alpha default counts" do
-    defmodule(Password_14_0_0, do: use(RandomPassword, alpha: 14))
-    assert Password_14_0_0.info().alpha === 14
-    assert Password_14_0_0.info().decimal === 0
-    assert Password_14_0_0.info().symbol === 0
+  test "password with explicit counts" do
+    n_chars_test(10, 4, 2)
+    n_chars_test(10, 4, 0)
+    n_chars_test(10, 0, 2)
+    n_chars_test(10, 0, 0)
+    n_chars_test(0, 10, 2)
+    n_chars_test(0, 10, 0)
+    n_chars_test(0, 0, 10)
+  end
 
-    defmodule(Password_14_2_0, do: use(RandomPassword, alpha: 14, decimal: 2))
-    assert Password_14_2_0.info().alpha === 14
+  test "password with one specified count" do
+    defmodule(Password_12_0_0, do: use(RandomPassword, alpha: 12))
+    assert Password_12_0_0.info().alpha === 12
+    assert Password_12_0_0.info().decimal === 0
+    assert Password_12_0_0.info().symbol === 0
+
+    defmodule(Password_0_8_0, do: use(RandomPassword, decimal: 8))
+    assert Password_0_8_0.info().alpha === 0
+    assert Password_0_8_0.info().decimal === 8
+    assert Password_0_8_0.info().symbol === 0
+
+    defmodule(Password_0_0_10, do: use(RandomPassword, symbol: 10))
+    assert Password_0_0_10.info().alpha === 0
+    assert Password_0_0_10.info().decimal === 0
+    assert Password_0_0_10.info().symbol === 10
+  end
+
+  test "password with two specified counts" do
+    defmodule(Password_14_2_0, do: use(RandomPassword, alpha: 16, decimal: 2))
+    assert Password_14_2_0.info().alpha === 16
     assert Password_14_2_0.info().decimal === 2
     assert Password_14_2_0.info().symbol === 0
 
-    defmodule(Password_14_0_2, do: use(RandomPassword, alpha: 14, symbol: 2))
-    assert Password_14_0_2.info().alpha === 14
-    assert Password_14_0_2.info().decimal === 0
-    assert Password_14_0_2.info().symbol === 2
+    defmodule(Password_10_0_8, do: use(RandomPassword, alpha: 10, symbol: 8))
+    assert Password_10_0_8.info().alpha === 10
+    assert Password_10_0_8.info().decimal === 0
+    assert Password_10_0_8.info().symbol === 8
+
+    defmodule(Password_0_10_8, do: use(RandomPassword, decimal: 10, symbol: 8))
+    assert Password_0_10_8.info().alpha === 0
+    assert Password_0_10_8.info().decimal === 10
+    assert Password_0_10_8.info().symbol === 8
   end
 
-  test "password module decimal default counts" do
-    defmodule(Password_0_14_0, do: use(RandomPassword, decimal: 14))
-    assert Password_0_14_0.info().alpha === 0
-    assert Password_0_14_0.info().decimal === 14
-    assert Password_0_14_0.info().symbol === 0
+  test "custom chars" do
+    alphas = "dingosky"
+    alpha = 10
 
-    defmodule(Password_0_14_2, do: use(RandomPassword, decimal: 14, symbol: 2))
-    assert Password_0_14_2.info().alpha === 0
-    assert Password_0_14_2.info().decimal === 14
-    assert Password_0_14_2.info().symbol === 2
+    symbols = "@#$%^&*()_"
+    symbol = 4
+
+    defmodule(PasswordCustom,
+      do:
+        use(RandomPassword,
+          alphas: alphas,
+          alpha: alpha,
+          symbols: symbols,
+          symbol: symbol
+        )
+    )
+
+    assert PasswordCustom.info().alpha === alpha
+    assert PasswordCustom.info().alphas === alphas
+    assert PasswordCustom.generate() |> count_char_matchs(alphas) === alpha
+
+    assert PasswordCustom.info().symbol === symbol
+    assert PasswordCustom.info().symbols === symbols
+    assert PasswordCustom.generate() |> count_char_matchs(symbols) === symbol
   end
 
-  test "password module symbol default counts" do
-    defmodule(Password_0_0_11, do: use(RandomPassword, symbol: 11))
-    assert Password_0_0_11.info().alpha === 0
-    assert Password_0_0_11.info().decimal === 0
-    assert Password_0_0_11.info().symbol === 11
+  test "unicode chars" do
+    alphas = "dîñgøskyDÎÑGOß˚¥"
+    alpha = 10
+
+    defmodule(PasswordUnicode,
+      do:
+        use(RandomPassword,
+          alphas: alphas,
+          alpha: alpha
+        )
+    )
+
+    assert PasswordUnicode.info().alpha === alpha
+    assert PasswordUnicode.info().alphas === alphas
+    assert PasswordUnicode.generate() |> count_char_matchs(alphas) === alpha
   end
 
   test "invalid counts" do
@@ -99,27 +227,69 @@ defmodule RandomPassword.Test do
     end
   end
 
-  test "symbols not binary" do
+  test "alphas with decimal" do
     assert_raise RandomPassword.Error, fn ->
-      defmodule(InvalidSymbols, do: use(RandomPassword, symbols: '!@#$%6&'))
+      defmodule(InvalidAlpha, do: use(RandomPassword, alphas: "abcdefghijklmn0pq"))
     end
   end
 
-  test "symbols with decimal char" do
+  test "alphas with symbol" do
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(InvalidAlpha, do: use(RandomPassword, alphas: "abcdefghijklmnopqr$tuv"))
+    end
+  end
+
+  test "alphas not unique" do
+    assert_raise Puid.Error, fn ->
+      defmodule(InvalidAlpha, do: use(RandomPassword, alphas: "dingoskydog"))
+    end
+  end
+
+  test "alphas with invalid ascii" do
+    assert_raise Puid.Error, fn ->
+      defmodule(InvalidAscii, do: use(RandomPassword, alphas: "dingo sky"))
+    end
+  end
+
+  test "symbols with decimal" do
     assert_raise RandomPassword.Error, fn ->
       defmodule(InvalidSymbols, do: use(RandomPassword, symbols: "!@#$%6&"))
     end
   end
 
-  test "only 1 symbol" do
+  test "symbols with alpha" do
     assert_raise RandomPassword.Error, fn ->
-      defmodule(SingleSymbol, do: use(RandomPassword, symbols: "!"))
+      defmodule(InvalidSymbols, do: use(RandomPassword, symbols: "!@#$D%&"))
     end
   end
 
   test "symbols not unique" do
     assert_raise Puid.Error, fn ->
-      defmodule(RepeatSymbol, do: use(RandomPassword, symbols: "!@#$%^#*"))
+      defmodule(InvalidSymbols, do: use(RandomPassword, symbols: "!@#$%!&"))
+    end
+  end
+
+  test "0 alpha" do
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(SingleAlpha, do: use(RandomPassword, alphas: ""))
+    end
+  end
+
+  test "only 1 alpha" do
+    assert_raise Puid.Error, fn ->
+      defmodule(SingleAlpha, do: use(RandomPassword, alphas: "d"))
+    end
+  end
+
+  test "0 symbol" do
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(SingleAlpha, do: use(RandomPassword, symbols: ""))
+    end
+  end
+
+  test "only 1 symbol" do
+    assert_raise Puid.Error, fn ->
+      defmodule(SingleSymbol, do: use(RandomPassword, symbols: "!"))
     end
   end
 end
