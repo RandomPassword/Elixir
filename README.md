@@ -73,7 +73,7 @@ Add `random_password` to `mix.exs` dependencies:
   ```elixir
   def deps,
     do: [ 
-      {:random_password, "~> 1.1"}
+      {:random_password, "~> 1.2"}
     ]
   ```
 
