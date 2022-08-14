@@ -278,8 +278,8 @@ defmodule RandomPassword.Test do
   end
 
   test "decimals not unique" do
-    assert_raise RandomPassword.Error, fn ->
-      defmodule(InvalidDecimals, do: use(RandomPassword, symbols: "0123435"))
+    assert_raise Puid.Error, fn ->
+      defmodule(InvalidDecimals, do: use(RandomPassword, decimals: "0123435"))
     end
   end
 

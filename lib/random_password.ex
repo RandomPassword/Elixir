@@ -7,9 +7,8 @@ defmodule RandomPassword do
 
   """
 
-  alias RandomPassword.Util
-
   alias Puid.Chars
+  alias RandomPassword.Util
 
   @doc """
 
