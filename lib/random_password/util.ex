@@ -28,6 +28,20 @@ defmodule RandomPassword.Util do
   end
 
   @doc false
+  def validate_decimals(chars) do
+    decimal = Puid.Chars.charlist!(:decimal)
+
+    valid =
+      chars
+      |> to_charlist()
+      |> Enum.reduce(true, fn char, valid -> valid and Enum.member?(decimal, char) end)
+
+    if !valid, do: raise(RandomPassword.Error, "Invalid alpha character")
+
+    :ok
+  end
+
+  @doc false
   def validate_symbol(chars) do
     symbol = Puid.Chars.charlist!(:symbol)
 

@@ -18,8 +18,8 @@ defmodule RandomPassword do
 
   This function provides calculation of entropy bits without having to create a module.
 
-  The characters to be used for `alphas` and `symbols` can be specified as options; o/w defaults
-  are used.
+  The characters to be used for `alphas`, `decimals` and `symbols` can be specified as options;
+  o/w defaults are used.
 
   ## Example
 
@@ -34,20 +34,20 @@ defmodule RandomPassword do
   @spec entropy_bits(non_neg_integer, non_neg_integer, non_neg_integer, map()) :: float()
   def entropy_bits(alpha, decimal, symbol, options \\ %{}) do
     alphas = options[:alphas] || Util.chars_string(:alpha)
+    decimals = options[:decimals] || Util.chars_string(:decimal)
     symbols = options[:symbols] || Util.chars_string(:symbol)
 
     {alpha_bits, decimal_bits, symbol_bits} =
-      entropy_bits(alpha, decimal, symbol, alphas, symbols)
+      entropy_bits(alpha, alphas, decimal, decimals, symbol, symbols)
 
     alpha_bits + decimal_bits + symbol_bits
   end
 
   @doc false
-  def entropy_bits(alpha, decimal, symbol, alphas, symbols) do
+  def entropy_bits(alpha, alphas, decimal, decimals, symbol, symbols) do
     Util.validate_alpha(alphas)
+    Util.validate_decimals(decimals)
     Util.validate_symbol(symbols)
-
-    decimals = Util.chars_string(:decimal)
 
     Util.validate_n_chars(alpha, alphas)
     Util.validate_n_chars(decimal, decimals)
@@ -62,8 +62,9 @@ defmodule RandomPassword do
 
   defmacro __using__(opts) do
     quote do
-      default_alpha = Chars.charlist!(:alpha)
-      default_symbol = Chars.charlist!(:symbol)
+      default_alphas = Chars.charlist!(:alpha)
+      default_decimals = Chars.charlist!(:decimal)
+      default_symbols = Chars.charlist!(:symbol)
 
       {alpha, decimal, symbol} =
         Util.default_n(
@@ -72,11 +73,12 @@ defmodule RandomPassword do
           unquote(opts)[:symbol]
         )
 
-      alphas = unquote(opts)[:alphas] || default_alpha |> to_string()
-      decimals = Chars.charlist!(:decimal) |> to_string()
-      symbols = unquote(opts)[:symbols] || default_symbol |> to_string()
+      alphas = unquote(opts)[:alphas] || default_alphas |> to_string()
+      decimals = unquote(opts)[:decimals] || Chars.charlist!(:decimal) |> to_string()
+      symbols = unquote(opts)[:symbols] || default_symbols |> to_string()
 
       Util.validate_alpha(alphas)
+      Util.validate_decimals(decimals)
       Util.validate_symbol(symbols)
 
       Util.validate_n_chars(alpha, alphas)
@@ -88,9 +90,10 @@ defmodule RandomPassword do
       {alpha_bits, decimal_bits, symbol_bits} =
         RandomPassword.entropy_bits(
           alpha,
-          decimal,
-          symbol,
           alphas,
+          decimal,
+          decimals,
+          symbol,
           symbols
         )
 
@@ -140,10 +143,10 @@ defmodule RandomPassword do
       mod_info = %RandomPassword.Info{
         entropy_bits: (alpha_bits + decimal_bits + symbol_bits) |> Float.round(2),
         alpha: alpha,
-        decimal: decimal,
-        symbol: symbol,
         alphas: __MODULE__.Alpha.info().characters(),
+        decimal: decimal,
         decimals: __MODULE__.Decimal.info().characters(),
+        symbol: symbol,
         symbols: __MODULE__.Symbol.info().characters(),
         length: alpha + decimal + symbol
       }

@@ -28,21 +28,23 @@ By default, `RandomPassword` modules generate passwords comprised of 14 alpha, 2
   "ghp0?HQ5|tl6AIbXSwGR7D"
 ```
 
-Default __alpha__ characters are uppercase (A-Z) and lowercase (a-z) ascii. Any set of unique characters (including Unicode) can be specified:
+Default __alpha__, __decimal__ and __symbol__ characters are used in creating passwords, but any set of unique characters (including Unicode for __alpha__) can be specified:
 
 ```elixir
   iex> alphas = "dđiînñgğoøsşkķyŷ"
-  iex> defmodule(CustomAlphaPassword, do: use(RandomPassword, alpha: 12, symbol: 3, alphas: alphas))
-  iex> CustomAlphaPassword.generate()
-  "#ñđdğdo_ŷ}oîiñķ"
+  iex> decimals = "246789"
+  iex> symbols = "@#$%&!"
+  iex> defmodule(CustomCharsPassword, do: use(RandomPassword, alpha: 12, decimal: 3, symbol: 3, alphas: alphas, decimals: decimals, symbols: symbols))
+  iex> CustomCharsPassword.generate()
+  "9gn&ķ9ŷdksø@ğđ9kî$"
 ```
 
-Symbol characters can also be explicitly specified:
+`RandomPassword` uses [:crypto.strong_rand_bytes/1](https://www.erlang.org/doc/man/crypto.html#strong_rand_bytes-1) as the default entropy source. The `rand_bytes` option can be used to specify any function of the form `(non_neg_integer) -> binary` as the source:
 
 ```elixir
-  iex> defmodule(CustomSymbolsPassword, do: use(RandomPassword, alpha: 10, decimal: 3, symbol: 3, symbols: "@#$%&!"))
-  iex> CustomSymbolsPassword.generate()
-  "2e5@jfB&@sw4wvCF"
+  iex> defmodule(PrngPassword, do: use(RandomPassword, alpha: 14, decimal: 4, symbol: 3, rand_bytes: &:rand.bytes/1 ))
+  iex> PrngPassword.generate()
+  "em3wPy!EpI>65sBInC?s4"
 ```
 
 Each created module includes an `info/0` function to display module parameterization:
@@ -87,6 +89,6 @@ Update dependencies
 
 `RandomPassword` uses [`Puid`](https://hexdocs.pm/puid/Puid.html) to generate random strings. `Puid` is extremely fast, and by default using cryptographically strong random bytes for random string generation.
 
-Three random strings are generated, one from each of `alphas`, __decimal__ and `symbols` characters of length specified by the `alpha`, `decimal` and `symbol` options. These three strings are concatenated and shuffled to form the final random password.
+Three random strings are generated, one from each of `alphas`, `decimals` and `symbols` characters of length specified by the `alpha`, `decimal` and `symbol` options. These three strings are concatenated and shuffled to form the final random password.
 
-Since `RandomPassword` restricts the optional setting of `alphas` and `symbols` characters to not overlap with either each other or the fixed __decimal__ characters, the resulting entropy of the random password is the sum of the entropy for the three separate random strings. The `RandomPassword` module function `info/0` lists the total entropy bits of the generated random passwords.
+Since `RandomPassword` restricts the optional characters for `alphas`, `decimals` and `symbols` to not overlap, the resulting entropy of the random password is the sum of the entropy for the three separate random strings. The `RandomPassword` module function `info/0` lists the total entropy bits of the generated random passwords.

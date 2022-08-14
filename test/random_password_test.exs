@@ -32,7 +32,6 @@ defmodule RandomPassword.Test do
     no_module_default_chars(nil, symbols, 88.86)
   end
 
-  @tag :only
   test "entropy bits without module, invalid" do
     assert_raise RandomPassword.Error, fn ->
       RandomPassword.entropy_bits(12, 4, 2, alphas: "")
@@ -57,7 +56,7 @@ defmodule RandomPassword.Test do
     end
   end
 
-  def count_char_matchs(string, chars) do
+  def count_char_matches(string, chars) do
     string
     |> String.graphemes()
     |> Enum.reduce(0, fn char, count ->
@@ -88,9 +87,9 @@ defmodule RandomPassword.Test do
     decimals = Util.chars_string(:decimal)
     symbols = Util.chars_string(:symbol)
 
-    assert count_char_matchs(password, alphas) === alpha
-    assert count_char_matchs(password, decimals) === decimal
-    assert count_char_matchs(password, symbols) === symbol
+    assert count_char_matches(password, alphas) === alpha
+    assert count_char_matches(password, decimals) === decimal
+    assert count_char_matches(password, symbols) === symbol
   end
 
   test "default module" do
@@ -152,26 +151,35 @@ defmodule RandomPassword.Test do
     alphas = "dingosky"
     alpha = 10
 
+    decimals = "2569"
+    decimal = 3
+
     symbols = "@#$%^&*()_"
     symbol = 4
 
     defmodule(PasswordCustom,
       do:
         use(RandomPassword,
-          alphas: alphas,
           alpha: alpha,
-          symbols: symbols,
-          symbol: symbol
+          alphas: alphas,
+          decimal: decimal,
+          decimals: decimals,
+          symbol: symbol,
+          symbols: symbols
         )
     )
 
     assert PasswordCustom.info().alpha === alpha
     assert PasswordCustom.info().alphas === alphas
-    assert PasswordCustom.generate() |> count_char_matchs(alphas) === alpha
+    assert PasswordCustom.generate() |> count_char_matches(alphas) === alpha
+
+    assert PasswordCustom.info().decimal === decimal
+    assert PasswordCustom.info().decimals === decimals
+    assert PasswordCustom.generate() |> count_char_matches(decimals) === decimal
 
     assert PasswordCustom.info().symbol === symbol
     assert PasswordCustom.info().symbols === symbols
-    assert PasswordCustom.generate() |> count_char_matchs(symbols) === symbol
+    assert PasswordCustom.generate() |> count_char_matches(symbols) === symbol
   end
 
   test "unicode chars" do
@@ -188,7 +196,7 @@ defmodule RandomPassword.Test do
 
     assert PasswordUnicode.info().alpha === alpha
     assert PasswordUnicode.info().alphas === alphas
-    assert PasswordUnicode.generate() |> count_char_matchs(alphas) === alpha
+    assert PasswordUnicode.generate() |> count_char_matches(alphas) === alpha
   end
 
   test "invalid counts" do
@@ -205,15 +213,32 @@ defmodule RandomPassword.Test do
     end
   end
 
-  test "alphas with decimal" do
+  test "0 alpha" do
     assert_raise RandomPassword.Error, fn ->
-      defmodule(InvalidAlpha, do: use(RandomPassword, alphas: "abcdefghijklmn0pq"))
+      defmodule(ZeroAlphas, do: use(RandomPassword, alphas: ""))
     end
   end
 
-  test "alphas with symbol" do
+  test "1 alpha" do
+    assert_raise Puid.Error, fn ->
+      defmodule(SingleAlphas, do: use(RandomPassword, alphas: "d"))
+    end
+  end
+
+  test "alphas not alpha" do
+    # decimal
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(InvalidAlpha, do: use(RandomPassword, alphas: "abcdefghijklmn0pq"))
+    end
+
+    # symbol
     assert_raise RandomPassword.Error, fn ->
       defmodule(InvalidAlpha, do: use(RandomPassword, alphas: "abcdefghijklmnopqr$tuv"))
+    end
+
+    # invalid ascii
+    assert_raise Puid.Error, fn ->
+      defmodule(InvalidAscii, do: use(RandomPassword, alphas: "dingo sky"))
     end
   end
 
@@ -223,51 +248,73 @@ defmodule RandomPassword.Test do
     end
   end
 
-  test "alphas with invalid ascii" do
-    assert_raise Puid.Error, fn ->
-      defmodule(InvalidAscii, do: use(RandomPassword, alphas: "dingo sky"))
+  test "0 decimals" do
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(ZeroDecimals, do: use(RandomPassword, decimals: ""))
     end
   end
 
-  test "symbols with decimal" do
+  test "1 decimals" do
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(SingleDecimals, do: use(RandomPassword, decimals: "!"))
+    end
+  end
+
+  test "decimals not symbol" do
+    # alpha
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(InvalidDecimals, do: use(RandomPassword, decimals: "!@#$D%&"))
+    end
+
+    # decimal
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(InvalidDecimals, do: use(RandomPassword, decimals: "!@#$%6&"))
+    end
+
+    # invalid
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(InvalidDecimals, do: use(RandomPassword, decimals: "!@#$%& "))
+    end
+  end
+
+  test "decimals not unique" do
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(InvalidDecimals, do: use(RandomPassword, symbols: "0123435"))
+    end
+  end
+
+  test "0 symbols" do
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(ZeroSymbol, do: use(RandomPassword, symbols: ""))
+    end
+  end
+
+  test "1 symbols" do
+    assert_raise Puid.Error, fn ->
+      defmodule(SingleSymbol, do: use(RandomPassword, symbols: "!"))
+    end
+  end
+
+  test "symbols not symbol" do
+    # alpha
+    assert_raise RandomPassword.Error, fn ->
+      defmodule(InvalidSymbols, do: use(RandomPassword, symbols: "!@#$D%&"))
+    end
+
+    # decimal
     assert_raise RandomPassword.Error, fn ->
       defmodule(InvalidSymbols, do: use(RandomPassword, symbols: "!@#$%6&"))
     end
-  end
 
-  test "symbols with alpha" do
+    # invalid
     assert_raise RandomPassword.Error, fn ->
-      defmodule(InvalidSymbols, do: use(RandomPassword, symbols: "!@#$D%&"))
+      defmodule(InvalidSymbols, do: use(RandomPassword, symbols: "!@#$%& "))
     end
   end
 
   test "symbols not unique" do
     assert_raise Puid.Error, fn ->
       defmodule(InvalidSymbols, do: use(RandomPassword, symbols: "!@#$%!&"))
-    end
-  end
-
-  test "0 alpha" do
-    assert_raise RandomPassword.Error, fn ->
-      defmodule(SingleAlpha, do: use(RandomPassword, alphas: ""))
-    end
-  end
-
-  test "only 1 alpha" do
-    assert_raise Puid.Error, fn ->
-      defmodule(SingleAlpha, do: use(RandomPassword, alphas: "d"))
-    end
-  end
-
-  test "0 symbol" do
-    assert_raise RandomPassword.Error, fn ->
-      defmodule(SingleAlpha, do: use(RandomPassword, symbols: ""))
-    end
-  end
-
-  test "only 1 symbol" do
-    assert_raise Puid.Error, fn ->
-      defmodule(SingleSymbol, do: use(RandomPassword, symbols: "!"))
     end
   end
 end
