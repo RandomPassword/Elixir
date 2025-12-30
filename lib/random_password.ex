@@ -142,11 +142,11 @@ defmodule RandomPassword do
       mod_info = %RandomPassword.Info{
         entropy_bits: (alpha_bits + decimal_bits + symbol_bits) |> Float.round(2),
         alpha: alpha,
-        alphas: __MODULE__.Alpha.info().characters(),
+        alphas: __MODULE__.Alpha.info().characters,
         decimal: decimal,
-        decimals: __MODULE__.Decimal.info().characters(),
+        decimals: __MODULE__.Decimal.info().characters,
         symbol: symbol,
-        symbols: __MODULE__.Symbol.info().characters(),
+        symbols: __MODULE__.Symbol.info().characters,
         length: alpha + decimal + symbol
       }
 
