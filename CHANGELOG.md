@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.1 (2025-12-30)
+
+### Changes
+
+- Fix Elixir 1.19 compiler warnings
+
 ## v1.2.0 (2022-08-14)
 
 ### Added
