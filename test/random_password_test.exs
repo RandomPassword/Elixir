@@ -7,14 +7,14 @@ defmodule RandomPassword.Test do
     do: assert(RandomPassword.entropy_bits(a, d, s) |> Float.round(2) === expect)
 
   test "entropy bits without module, default chars" do
-    no_module_default_chars(16, 4, 2, 114.11)
-    no_module_default_chars(16, 2, 0, 97.85)
-    no_module_default_chars(16, 0, 2, 100.82)
-    no_module_default_chars(16, 0, 0, 91.21)
+    no_module_default_chars(16, 4, 2, 118.57)
+    no_module_default_chars(16, 2, 0, 102.02)
+    no_module_default_chars(16, 0, 2, 104.99)
+    no_module_default_chars(16, 0, 0, 95.21)
 
-    no_module_default_chars(0, 14, 2, 56.12)
-    no_module_default_chars(0, 14, 0, 46.51)
-    no_module_default_chars(0, 0, 14, 67.3)
+    no_module_default_chars(0, 14, 2, 60.12)
+    no_module_default_chars(0, 14, 0, 50.31)
+    no_module_default_chars(0, 0, 14, 71.11)
 
     assert RandomPassword.entropy_bits(0, 0, 0) === 0
   end
@@ -27,9 +27,9 @@ defmodule RandomPassword.Test do
   test "entropy bits without module, custom chars" do
     alphas = "dîngøsky"
     symbols = "!@#$%^&*()_+"
-    no_module_default_chars(alphas, nil, 58.90)
-    no_module_default_chars(alphas, symbols, 56.46)
-    no_module_default_chars(nil, symbols, 88.86)
+    no_module_default_chars(alphas, nil, 63.07)
+    no_module_default_chars(alphas, symbols, 60.63)
+    no_module_default_chars(nil, symbols, 93.03)
   end
 
   test "entropy bits without module, invalid" do
@@ -62,6 +62,17 @@ defmodule RandomPassword.Test do
     |> Enum.reduce(0, fn char, count ->
       if chars |> String.contains?(char), do: count + 1, else: count
     end)
+  end
+
+  test "crypto shuffle with deterministic random bytes" do
+    rand_bytes = fn 4 -> <<0::unsigned-big-integer-size(32)>> end
+    assert Util.shuffle(~c"abcdef", rand_bytes) === ~c"bcdefa"
+  end
+
+  test "crypto shuffle no-op for short charlists" do
+    rand_bytes = fn 4 -> <<0::unsigned-big-integer-size(32)>> end
+    assert Util.shuffle(~c"a", rand_bytes) === ~c"a"
+    assert Util.shuffle([], rand_bytes) === []
   end
 
   def n_chars_test(alpha, decimal, symbol) do
@@ -99,7 +110,7 @@ defmodule RandomPassword.Test do
     assert info.decimal === 2
     assert info.symbol === 1
     assert info.length === 17
-    assert info.entropy_bits === 91.26
+    assert info.entropy_bits === 95.34
     assert DefaultPassword.generate() |> String.length() === info.length
   end
 

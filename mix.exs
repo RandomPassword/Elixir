@@ -4,7 +4,7 @@ defmodule RandomPassword.MixProject do
   def project do
     [
       app: :random_password,
-      version: "1.2.1",
+      version: "1.2.2",
       elixir: "~> 1.8",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
@@ -16,9 +16,9 @@ defmodule RandomPassword.MixProject do
   defp deps,
     do: [
       {:puid, "~> 2.0"},
-      {:dialyxir, "~> 1.0", only: :dev, runtime: false},
-      {:earmark, "~> 1.2", only: :dev},
-      {:ex_doc, "~> 0.19", only: :dev}
+      {:dialyxir, "~> 1.4", only: :dev, runtime: false},
+      {:earmark, "~> 1.4", only: :dev},
+      {:ex_doc, "~> 0.40", only: :dev}
     ]
 
   defp description do

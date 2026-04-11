@@ -23,10 +23,10 @@ defmodule RandomPassword do
   ## Example
 
       iex> RandomPassword.entropy_bits(12, 4, 2) |> Float.round(2)
-      91.31
+      95.4
 
       iex> RandomPassword.entropy_bits(12, 4, 2, symbols: "!@#$%&") |> Float.round(2)
-      86.86
+      90.95
 
   """
 
@@ -39,7 +39,7 @@ defmodule RandomPassword do
     {alpha_bits, decimal_bits, symbol_bits} =
       entropy_bits(alpha, alphas, decimal, decimals, symbol, symbols)
 
-    alpha_bits + decimal_bits + symbol_bits
+    alpha_bits + decimal_bits + symbol_bits + shuffle_entropy_bits(alpha + decimal + symbol)
   end
 
   @doc false
@@ -85,6 +85,7 @@ defmodule RandomPassword do
       Util.validate_n_chars(symbol, symbols)
 
       rand_bytes = unquote(opts[:rand_bytes])
+      @shuffle_rand_bytes unquote(opts[:rand_bytes]) || &:crypto.strong_rand_bytes/1
 
       {alpha_bits, decimal_bits, symbol_bits} =
         RandomPassword.entropy_bits(
@@ -95,6 +96,12 @@ defmodule RandomPassword do
           symbol,
           symbols
         )
+
+      entropy_bits =
+        alpha_bits +
+          decimal_bits +
+          symbol_bits +
+          RandomPassword.shuffle_entropy_bits(alpha + decimal + symbol)
 
       defmodule __MODULE__.Empty do
         def generate, do: ""
@@ -135,12 +142,12 @@ defmodule RandomPassword do
 
         (alpha <> decimal <> symbol)
         |> to_charlist()
-        |> Enum.shuffle()
+        |> Util.shuffle(@shuffle_rand_bytes)
         |> to_string()
       end
 
       mod_info = %RandomPassword.Info{
-        entropy_bits: (alpha_bits + decimal_bits + symbol_bits) |> Float.round(2),
+        entropy_bits: entropy_bits |> Float.round(2),
         alpha: alpha,
         alphas: __MODULE__.Alpha.info().characters,
         decimal: decimal,
@@ -162,7 +169,7 @@ defmodule RandomPassword do
               %RandomPassword.Info{
                 alpha: 16,
                 decimal: 2,
-                entropy_bits: 102.66,
+                entropy_bits: 106.91,
                 symbol: 1,
                 symbols: "!#$%&()*+,-./:;<=>?@[]^_{|}~"
               }
@@ -170,4 +177,8 @@ defmodule RandomPassword do
       def info, do: @random_password_mod_info
     end
   end
+
+  @doc false
+  def shuffle_entropy_bits(0), do: 0
+  def shuffle_entropy_bits(total_chars), do: :math.log2(total_chars)
 end

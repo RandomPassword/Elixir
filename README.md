@@ -59,7 +59,7 @@ Each created module includes an `info/0` function to display module parameteriza
     alphas: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
     decimal: 3,
     decimals: "0123456789",
-    entropy_bits: 121.3,
+    entropy_bits: 125.82,
     length: 23,
     symbol: 3,
     symbols: "!#$%&()*+,-./:;<=>?@[]^_{|}~"
@@ -89,6 +89,6 @@ Update dependencies
 
 `RandomPassword` uses [`Puid`](https://hexdocs.pm/puid/Puid.html) to generate random strings. `Puid` is extremely fast, and by default using cryptographically strong random bytes for random string generation.
 
-Three random strings are generated, one from each of `alphas`, `decimals` and `symbols` characters of length specified by the `alpha`, `decimal` and `symbol` options. These three strings are concatenated and shuffled to form the final random password.
+Three random strings are generated, one from each of `alphas`, `decimals` and `symbols` characters of length specified by the `alpha`, `decimal` and `symbol` options. These three strings are concatenated and shuffled using cryptographically strong random bytes by default to form the final random password.
 
-Since `RandomPassword` restricts the optional characters for `alphas`, `decimals` and `symbols` to not overlap, the resulting entropy of the random password is the sum of the entropy for the three separate random strings. The `RandomPassword` module function `info/0` lists the total entropy bits of the generated random passwords.
+Since none of the characters for `alphas`, `decimals` and `symbols` overlap, the resulting entropy of the random password is the sum of the entropy for the three separate random strings plus `log2(pw_len)` from shuffling the concatenated result. The `RandomPassword` module function `info/0` lists the total entropy bits of the generated random passwords.

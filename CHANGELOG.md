@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.3.0 (2026-04-11)
+
+### Changes
+
+- Use cryptographically secure Fisher-Yates shuffling for final password permutation
+  - Replace `Enum.shuffle/1` with a `rand_bytes`-backed shuffle
+- Update total entropy to include random shuffle contribution
+- Update development dependencies
+- Add GitHub Actions CI workflow
+  - Test matrix: Elixir `1.17`, `1.18`, `1.19` on OTP `27`
+  - Enforce warnings as errors for compile and test
+  - Add non-blocking canary job using Elixir `latest` on OTP `27`
+
 ## v1.2.1 (2025-12-30)
 
 ### Changes
